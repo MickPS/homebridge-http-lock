@@ -1,6 +1,6 @@
 {
   "name": "homebridge-http-lock",
-  "version": "0.5.36",
+  "version": "0.1.00",
   "description": "Powerful http lock for Homebridge",
   "license": "ISC",
   "keywords": [
