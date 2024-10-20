@@ -19,10 +19,10 @@ module.exports = function (homebridge) {
 
     api = homebridge;
 
-    homebridge.registerAccessory("homebridge-http-switch", "HTTP-SWITCH", HTTP_SWITCH);
+    homebridge.registerAccessory("homebridge-http-lock", "HTTP-LOCK", HTTP_LOCK);
 };
 
-const SwitchType = Object.freeze({
+const LockType = Object.freeze({
     STATEFUL: "stateful",
     STATELESS: "stateless",
     STATELESS_REVERSE: "stateless-reverse",
@@ -30,14 +30,14 @@ const SwitchType = Object.freeze({
     TOGGLE_REVERSE: "toggle-reverse",
 });
 
-function HTTP_SWITCH(log, config) {
+function HTTP_LOCK(log, config) {
     this.log = log;
     this.name = config.name;
     this.debug = config.debug || false;
 
-    this.switchType = utils.enumValueOf(SwitchType, config.switchType, SwitchType.STATEFUL);
-    if (!this.switchType) {
-        this.log.warn(`'${this.switchType}' is a invalid switchType! Aborting...`);
+    this.LockType = utils.enumValueOf(LockType, config.LockType, LockType.STATEFUL);
+    if (!this.LockType) {
+        this.log.warn(`'${this.LockType}' is a invalid LockType! Aborting...`);
         return;
     }
 
@@ -50,7 +50,7 @@ function HTTP_SWITCH(log, config) {
         this.serialNumber = config.serialNumber;
     }
 
-    if (this.switchType === SwitchType.STATEFUL) {
+    if (this.LockType === LockType.STATEFUL) {
         this.statusPattern = /1/;
         if (config.statusPattern) {
             if (typeof config.statusPattern === "string")
@@ -125,22 +125,22 @@ function HTTP_SWITCH(log, config) {
         }
     }
 
-    this.homebridgeService = new Service.Switch(this.name);
+    this.homebridgeService = new Service.Lock(this.name);
     const onCharacteristic = this.homebridgeService.getCharacteristic(Characteristic.On)
         .on("get", this.getStatus.bind(this))
         .on("set", this.setStatus.bind(this));
 
 
-    switch (this.switchType) {
-        case SwitchType.TOGGLE_REVERSE:
-        case SwitchType.STATELESS_REVERSE:
+    switch (this.LockType) {
+        case LockType.TOGGLE_REVERSE:
+        case LockType.STATELESS_REVERSE:
             onCharacteristic.updateValue(true);
             break;
     }
 
     /** @namespace config.pullInterval */
     if (config.pullInterval) {
-        if (this.switchType === SwitchType.STATEFUL) {
+        if (this.LockType === LockType.STATEFUL) {
             this.pullTimer = new PullTimer(this.log, config.pullInterval, this.getStatus.bind(this), value => {
                 this.homebridgeService.getCharacteristic(Characteristic.On).updateValue(value);
             });
@@ -151,8 +151,8 @@ function HTTP_SWITCH(log, config) {
     }
 
     if (config.notificationID) {
-        if (this.switchType === SwitchType.STATEFUL
-            || this.switchType === SwitchType.TOGGLE || this.switchType === SwitchType.TOGGLE_REVERSE) {
+        if (this.LockType === LockType.STATEFUL
+            || this.LockType === LockType.TOGGLE || this.LockType === LockType.TOGGLE_REVERSE) {
             /** @namespace config.notificationPassword */
             /** @namespace config.notificationID */
             notifications.enqueueNotificationRegistrationIfDefined(api, log, config.notificationID, config.notificationPassword, this.handleNotification.bind(this));
@@ -162,8 +162,8 @@ function HTTP_SWITCH(log, config) {
     }
 
     if (config.mqtt) {
-        if (this.switchType === SwitchType.STATEFUL
-            || this.switchType === SwitchType.TOGGLE || this.switchType === SwitchType.TOGGLE_REVERSE) {
+        if (this.LockType === LockType.STATEFUL
+            || this.LockType === LockType.TOGGLE || this.LockType === LockType.TOGGLE_REVERSE) {
             let options;
             try {
                 options = configParser.parseMQTTOptions(config.mqtt)
@@ -185,11 +185,11 @@ function HTTP_SWITCH(log, config) {
             this.log("'mqtt' options were specified, however switch is stateless. Ignoring it!");
     }
 
-    this.log("Switch successfully configured...");
+    this.log("Lock successfully configured...");
     if (this.debug) {
-        this.log("Switch started with the following options: ");
-        this.log("  - switchType: " + this.switchType);
-        if (this.switchType === SwitchType.STATEFUL)
+        this.log("Lock started with the following options: ");
+        this.log("  - LockType: " + this.LockType);
+        if (this.LockType === LockType.STATEFUL)
             this.log("  - statusPattern: " + this.statusPattern);
 
         if (this.auth)
@@ -202,7 +202,7 @@ function HTTP_SWITCH(log, config) {
         if (this.status)
             this.log("  - statusUrl: " + JSON.stringify(this.status));
 
-        if (this.switchType === SwitchType.STATELESS || this.switchType === SwitchType.STATELESS_REVERSE)
+        if (this.LockType === LockType.STATELESS || this.LockType === LockType.STATELESS_REVERSE)
             this.log("  - timeout for stateless switch: " + this.timeout);
 
         if (this.pullTimer)
@@ -226,14 +226,14 @@ function HTTP_SWITCH(log, config) {
     }
 }
 
-HTTP_SWITCH.prototype = {
+HTTP_LOCK.prototype = {
 
     parseUrls: function (config) {
         /** @namespace config.onUrl */
-        if (this.switchType !== SwitchType.STATELESS_REVERSE) {
+        if (this.LockType !== LockType.STATELESS_REVERSE) {
             if (config.onUrl) {
                 try {
-                    this.on = this.switchType === SwitchType.STATEFUL
+                    this.on = this.LockType === LockType.STATEFUL
                         ? [configParser.parseUrlProperty(config.onUrl)]
                         : configParser.parseMultipleUrlProperty(config.onUrl);
                 } catch (error) {
@@ -242,18 +242,18 @@ HTTP_SWITCH.prototype = {
                 }
             }
             else {
-                this.log.warn(`Property 'onUrl' is required when using switchType '${this.switchType}'`);
+                this.log.warn(`Property 'onUrl' is required when using LockType '${this.LockType}'`);
                 return false;
             }
         }
         else if (config.onUrl)
-            this.log.warn(`Property 'onUrl' is defined though it is not used with switchType ${this.switchType}. Ignoring it!`);
+            this.log.warn(`Property 'onUrl' is defined though it is not used with LockType ${this.LockType}. Ignoring it!`);
 
         /** @namespace config.offUrl */
-        if (this.switchType !== SwitchType.STATELESS) {
+        if (this.LockType !== LockType.STATELESS) {
             if (config.offUrl) {
                 try {
-                    this.off = this.switchType === SwitchType.STATEFUL
+                    this.off = this.LockType === LockType.STATEFUL
                         ? [configParser.parseUrlProperty(config.offUrl)]
                         : configParser.parseMultipleUrlProperty(config.offUrl);
                 } catch (error) {
@@ -262,14 +262,14 @@ HTTP_SWITCH.prototype = {
                 }
             }
             else {
-                this.log.warn(`Property 'offUrl' is required when using switchType '${this.switchType}'`);
+                this.log.warn(`Property 'offUrl' is required when using LockType '${this.LockType}'`);
                 return false;
             }
         }
         else if (config.offUrl)
-            this.log.warn(`Property 'offUrl' is defined though it is not used with switchType ${this.switchType}. Ignoring it!`);
+            this.log.warn(`Property 'offUrl' is defined though it is not used with LockType ${this.LockType}. Ignoring it!`);
 
-        if (this.switchType === SwitchType.STATEFUL) {
+        if (this.LockType === LockType.STATEFUL) {
             /** @namespace config.statusUrl */
             if (config.statusUrl) {
                 try {
@@ -280,12 +280,12 @@ HTTP_SWITCH.prototype = {
                 }
             }
             else {
-                this.log.warn(`Property 'statusUrl' is required when using switchType '${this.switchType}'`);
+                this.log.warn(`Property 'statusUrl' is required when using LockType '${this.LockType}'`);
                 return false;
             }
         }
         else if (config.statusUrl)
-            this.log.warn(`Property 'statusUrl' is defined though it is not used with switchType ${this.switchType}. Ignoring it!`);
+            this.log.warn(`Property 'statusUrl' is defined though it is not used with LockType ${this.LockType}. Ignoring it!`);
 
         return true;
     },
@@ -302,9 +302,9 @@ HTTP_SWITCH.prototype = {
         const informationService = new Service.AccessoryInformation();
 
         informationService
-            .setCharacteristic(Characteristic.Manufacturer, "Andreas Bauer")
-            .setCharacteristic(Characteristic.Model, "HTTP Switch")
-            .setCharacteristic(Characteristic.SerialNumber, this.serialNumber || "SW01")
+            .setCharacteristic(Characteristic.Manufacturer, "Mick Sly")
+            .setCharacteristic(Characteristic.Model, "HTTP Lock")
+            .setCharacteristic(Characteristic.SerialNumber, this.serialNumber || "LK01")
             .setCharacteristic(Characteristic.FirmwareRevision, packageJSON.version);
 
         return [informationService, this.homebridgeService];
@@ -337,8 +337,8 @@ HTTP_SWITCH.prototype = {
         if (this.pullTimer)
             this.pullTimer.resetTimer();
 
-        switch (this.switchType) {
-            case SwitchType.STATEFUL:
+        switch (this.LockType) {
+            case LockType.STATEFUL:
                 if (!this.statusCache.shouldQuery()) {
                     const value = this.homebridgeService.getCharacteristic(Characteristic.On).value;
                     if (this.debug)
@@ -369,21 +369,21 @@ HTTP_SWITCH.prototype = {
 
                         const switchedOn = this.statusPattern.test(body);
                         if (this.debug)
-                            this.log("Switch is currently %s", switchedOn? "ON": "OFF");
+                            this.log("Lock is currently %s", switchedOn? "ON": "OFF");
 
                         this.statusCache.queried(); // we only update lastQueried on successful query
                         callback(null, switchedOn);
                     }
                 });
                 break;
-            case SwitchType.STATELESS:
+            case LockType.STATELESS:
                 callback(null, false);
                 break;
-            case SwitchType.STATELESS_REVERSE:
+            case LockType.STATELESS_REVERSE:
                 callback(null, true);
                 break;
-            case SwitchType.TOGGLE:
-            case SwitchType.TOGGLE_REVERSE:
+            case LockType.TOGGLE:
+            case LockType.TOGGLE_REVERSE:
                 callback(null, this.homebridgeService.getCharacteristic(Characteristic.On).value);
                 break;
 
@@ -397,11 +397,11 @@ HTTP_SWITCH.prototype = {
         if (this.pullTimer)
             this.pullTimer.resetTimer();
 
-        switch (this.switchType) {
-            case SwitchType.STATEFUL:
+        switch (this.LockType) {
+            case LockType.STATEFUL:
                 this._makeSetRequest(on, callback);
                 break;
-            case SwitchType.STATELESS:
+            case LockType.STATELESS:
                 if (!on) {
                     callback();
                     break;
@@ -409,7 +409,7 @@ HTTP_SWITCH.prototype = {
 
                 this._makeSetRequest(true, callback);
                 break;
-            case SwitchType.STATELESS_REVERSE:
+            case LockType.STATELESS_REVERSE:
                 if (on) {
                     callback();
                     break;
@@ -417,8 +417,8 @@ HTTP_SWITCH.prototype = {
 
                 this._makeSetRequest(false, callback);
                 break;
-            case SwitchType.TOGGLE:
-            case SwitchType.TOGGLE_REVERSE:
+            case LockType.TOGGLE:
+            case LockType.TOGGLE_REVERSE:
                 this._makeSetRequest(on, callback);
                 break;
 
@@ -494,20 +494,20 @@ HTTP_SWITCH.prototype = {
                 callback();
             }
 
-            this.resetSwitchWithTimeoutIfStateless();
+            this.resetLockWithTimeoutIfStateless();
         });
     },
 
-    resetSwitchWithTimeoutIfStateless: function () {
-        switch (this.switchType) {
-            case SwitchType.STATELESS:
+    resetLockWithTimeoutIfStateless: function () {
+        switch (this.LockType) {
+            case LockType.STATELESS:
                 this.log("Resetting switch to OFF");
 
                 setTimeout(() => {
                     this.homebridgeService.setCharacteristic(Characteristic.On, false);
                 }, this.timeout);
                 break;
-            case SwitchType.STATELESS_REVERSE:
+            case LockType.STATELESS_REVERSE:
                 this.log("Resetting switch to ON");
 
                 setTimeout(() => {
