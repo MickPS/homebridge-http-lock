@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-http-lockMS",
+  "name": "homebridge-http-lock-ms",
   "version": "0.1.00",
   "description": "Powerful http lock for Homebridge",
   "license": "ISC",
@@ -11,10 +11,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MickPS/homebridge-http-lockMS"
+    "url": "https://github.com/MickPS/homebridge-http-lock-ms"
   },
   "bugs": {
-    "url": "https://github.com/MickPS/homebridge-http-lock/issues"
+    "url": "https://github.com/MickPS/homebridge-http-lock-ms/issues"
   },
   "engines": {
     "node": ">=10.17.0",
